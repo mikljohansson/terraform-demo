@@ -1,0 +1,38 @@
+#cloud-config
+
+---
+coreos:
+  units:
+  - name: webapp.service
+    command: start
+    content: |
+      [Unit]
+      After=docker.service 
+      Requires=docker.service
+
+      [Install]
+      WantedBy=multi-user.target
+
+      [Service]
+      Environment=IMAGE=meltwater/mesos-demo-webapp:latest NAME=webapp
+
+      # Allow docker pull to take some time
+      TimeoutStartSec=600
+
+      # Restart on failures
+      KillMode=none
+      Restart=always
+      RestartSec=15
+
+      ExecStartPre=-/usr/bin/docker kill $${NAME}
+      ExecStartPre=-/usr/bin/docker rm $${NAME}
+      ExecStartPre=-/usr/bin/docker pull $${IMAGE}
+      ExecStart=/usr/bin/docker run --name $${NAME} \
+        -p 8080:8080 \
+        -e "DATABASE=${database}" \
+        $${IMAGE}
+
+      ExecStop=/usr/bin/docker stop $${NAME}
+  update:
+    reboot-strategy: off
+
